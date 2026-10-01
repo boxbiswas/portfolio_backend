@@ -5,3 +5,258 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// -----------------------------------------------------------------------------
+// 1. User & Authentication
+// -----------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("ADMIN")
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  blogs         Blog[]
+  media         Media[]
+  auditLogs     AuditLog[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// 2. Core Settings & Singletons
+// -----------------------------------------------------------------------------
+
+model SiteSettings {
+  id              String  @id @default(uuid())
+  siteName        String
+  siteTitle       String
+  siteDescription String? @db.Text
+  heroTitle       String
+  heroSubtitle    String? @db.Text
+  contactEmail    String
+  contactPhone    String?
+  location        String?
+  copyrightText   String?
+
+  logoMediaId    String?
+  logoMedia      Media?  @relation("SiteLogo", fields: [logoMediaId], references: [id])
+  faviconMediaId String?
+  faviconMedia   Media?  @relation("SiteFavicon", fields: [faviconMediaId], references: [id])
+  resumeMediaId  String?
+  resumeMedia    Media?  @relation("SiteResume", fields: [resumeMediaId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model About {
+  id       String @id @default(uuid())
+  title    String
+  shortBio String @db.Text
+  longBio  String @db.Text
+
+  profileMediaId String?
+  profileMedia   Media?  @relation("AboutProfile", fields: [profileMediaId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// 3. Portfolio Content Models
+// -----------------------------------------------------------------------------
+
+model SocialLink {
+  id        String   @id @default(uuid())
+  platform  String
+  label     String
+  url       String
+  iconKey   String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Skill {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  category    String // String type to prevent enum lock-in
+  level       String // String type to prevent enum lock-in
+  description String?  @db.Text
+  iconKey     String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects ProjectSkill[]
+}
+
+model Project {
+  id               String  @id @default(uuid())
+  title            String
+  slug             String  @unique
+  shortDescription String  @db.Text
+  description      String  @db.Text
+  liveUrl          String?
+  repoUrl          String?
+
+  coverMediaId String?
+  coverMedia   Media?  @relation("ProjectCover", fields: [coverMediaId], references: [id])
+
+  status    String   @default("completed") // String type to prevent enum lock-in
+  featured  Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills ProjectSkill[]
+}
+
+model ProjectSkill {
+  projectId String
+  skillId   String
+  sortOrder Int    @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, skillId])
+}
+
+model Blog {
+  id      String @id @default(uuid())
+  title   String
+  slug    String @unique
+  excerpt String @db.Text
+  content String @db.Text
+
+  coverMediaId String?
+  coverMedia   Media?  @relation("BlogCover", fields: [coverMediaId], references: [id])
+
+  status      String    @default("draft") // String type to prevent enum lock-in
+  publishedAt DateTime?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Experience {
+  id             String    @id @default(uuid())
+  company        String
+  role           String
+  location       String?
+  employmentType String // String type to prevent enum lock-in (e.g., Internship, Job, Freelance)
+  startDate      DateTime
+  endDate        DateTime?
+  isCurrent      Boolean   @default(false)
+  description    String?   @db.Text
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Testimonial {
+  id      String  @id @default(uuid())
+  name    String
+  role    String
+  company String?
+  message String  @db.Text
+
+  avatarMediaId String?
+  avatarMedia   Media?  @relation("TestimonialAvatar", fields: [avatarMediaId], references: [id])
+
+  isPublished Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Service {
+  id               String   @id @default(uuid())
+  title            String
+  shortDescription String   @db.Text
+  description      String?  @db.Text
+  iconKey          String?
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// 4. Media & System Models
+// -----------------------------------------------------------------------------
+
+model Media {
+  id           String   @id @default(uuid())
+  originalName String
+  fileName     String
+  storageKey   String   @unique
+  url          String
+  mimeType     String
+  sizeBytes    Int
+  width        Int?
+  height       Int?
+  altText      String?
+  isPublic     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  uploadedById String?
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  // Reverse relations to entities using this media
+  siteLogos          SiteSettings[] @relation("SiteLogo")
+  siteFavicons       SiteSettings[] @relation("SiteFavicon")
+  siteResumes        SiteSettings[] @relation("SiteResume")
+  aboutProfiles      About[]        @relation("AboutProfile")
+  projectCovers      Project[]      @relation("ProjectCover")
+  blogCovers         Blog[]         @relation("BlogCover")
+  testimonialAvatars Testimonial[]  @relation("TestimonialAvatar")
+}
+
+model ContactMessage {
+  id         String    @id @default(uuid())
+  name       String
+  email      String
+  subject    String
+  message    String    @db.Text
+  status     String    @default("new") // e.g., new, read, replied, archived, spam
+  repliedAt  DateTime?
+  adminNotes String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+}

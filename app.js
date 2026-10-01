@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -11,8 +13,7 @@ const app = express();
 // Cors configuration
 app.use(cors({
     origin: [
-        "http://localhost:5173",
-        "https://text-to-speech-frontend-alpha.vercel.app"
+        "http://localhost:5173"
     ],
     credentials: true, // This allows the cookies to be sent back and forth
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -27,13 +28,19 @@ app.use(cookieParser());
 
 // Import routes
 import authRoute from './routes/authRoute.js';
-import ttsRoute from './routes/ttsRoutes.js';
-import historyRoute from './routes/historyRoute.js';
+import adminRoutes from './routes/adminRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve the uploads folder statically so frontend can see images via /uploads/filename.jpg
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Use routes
 app.use('/auth', authRoute);
-app.use('/tts', ttsRoute);
-app.use('/history', historyRoute);
+app.use('/admin', adminRoutes);
+app.use('/', publicRoutes);
 
 const PORT = process.env.PORT;
 
