@@ -13,7 +13,8 @@ const app = express();
 // Cors configuration
 app.use(cors({
     origin: [
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "https://portfolio-frontend-neon-nu.vercel.app"
     ],
     credentials: true, // This allows the cookies to be sent back and forth
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
